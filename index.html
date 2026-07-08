@@ -17,9 +17,9 @@
     }
 
     header {
-      padding: 34px 18px 24px;
+      padding: 30px 18px 22px;
       text-align: center;
-      background: #ffffffcc;
+      background: #ffffffdd;
       backdrop-filter: blur(8px);
       border-bottom: 1px solid #e7e7e7;
       position: sticky;
@@ -53,7 +53,7 @@
     main {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 26px 16px 120px;
+      padding: 24px 16px 120px;
     }
 
     .grid {
@@ -153,6 +153,7 @@
       font-weight: 800;
       letter-spacing: -0.04em;
       margin: 8px 0 4px;
+      min-height: 26px;
     }
 
     .hint {
@@ -299,7 +300,7 @@
       line-height: 1.8;
     }
 
-    .small-guide {
+    .notice {
       margin: 18px auto 0;
       max-width: 760px;
       background: #fff7d6;
@@ -342,17 +343,16 @@
   <header>
     <h1>🏆 학교 대표 캐릭터 투표</h1>
     <p>마음에 드는 캐릭터를 <strong>2개</strong> 선택해주세요.</p>
-    <p>그림을 한 번 더 누르면 크게 볼 수 있습니다.</p>
+    <p>그림을 빠르게 두 번 누르면 크게 볼 수 있습니다.</p>
     <div class="counter">선택 <span id="count">0</span> / 2</div>
   </header>
 
   <main>
     <section id="voteArea">
       <div class="grid" id="grid"></div>
-      <div class="small-guide">
-        이미지 파일은 <strong>images</strong> 폴더 안에 넣어주세요. 
-        파일명은 <strong>character01, character02 … character18</strong> 순서이며,
-        png/jpg/jpeg/webp 확장자를 자동으로 찾습니다.
+      <div class="notice">
+        이미지가 보이지 않으면 GitHub 저장소에 <strong>images</strong> 폴더와 그림 파일이 함께 올라갔는지 확인해주세요.
+        파일명은 <strong>character01.png ~ character18.png</strong> 형식이 가장 안전합니다.
       </div>
     </section>
 
@@ -379,12 +379,17 @@
   </div>
 
   <script>
+    // 1. Google Apps Script 웹 앱 URL을 아래 따옴표 안에 붙여 넣으세요.
+    // 예: const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
+    const GOOGLE_SCRIPT_URL = "";
+
     const characterNames = ["로디,버디,로리", "바람이", "새봄이", "솔방구", "안용이", "안이", "안일이", "안카피일", "안토끼", "안톨이", "파벳이와 안일이", "깡총이", "명룡이", "소망이", "솔중이", "양일이와 사랑이", "졸뭉이", "판두리"];
     const maxSelect = 2;
     const extensions = ["png", "jpg", "jpeg", "webp", "PNG", "JPG", "JPEG", "WEBP"];
     const selected = new Set();
     let lastClickTime = 0;
     let lastClickedIndex = null;
+    let isSubmitting = false;
 
     const grid = document.getElementById("grid");
     const count = document.getElementById("count");
@@ -499,13 +504,13 @@
 
     function updateUI() {
       count.textContent = selected.size;
-      submitBtn.disabled = selected.size !== maxSelect;
+      submitBtn.disabled = selected.size !== maxSelect || isSubmitting;
     }
 
     function showToast(message) {
       toast.textContent = message;
       toast.classList.add("show");
-      setTimeout(() => toast.classList.remove("show"), 1400);
+      setTimeout(() => toast.classList.remove("show"), 1600);
     }
 
     function openModal(src, name) {
@@ -530,20 +535,68 @@
       updateUI();
     });
 
-    submitBtn.addEventListener("click", () => {
+    async function sendVote(resultNames) {
+      const payload = {
+        selected1: resultNames[0],
+        selected2: resultNames[1],
+        selectedAll: resultNames.join(", "),
+        userAgent: navigator.userAgent,
+        pageUrl: location.href,
+        submittedAt: new Date().toISOString()
+      };
+
+      if (!GOOGLE_SCRIPT_URL) {
+        console.warn("GOOGLE_SCRIPT_URL이 비어 있습니다. 스프레드시트에는 저장되지 않습니다.");
+        return { ok: true, skipped: true };
+      }
+
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      return { ok: true };
+    }
+
+    submitBtn.addEventListener("click", async () => {
       if (selected.size !== maxSelect) {
         showToast("캐릭터를 2개 선택해주세요.");
         return;
       }
 
-      const resultNames = Array.from(selected).map(index => characterNames[index]);
-      localStorage.setItem("characterVoteResult", JSON.stringify(resultNames));
+      if (localStorage.getItem("characterVoteSubmitted") === "yes") {
+        showToast("이 기기에서는 이미 투표가 완료되었습니다.");
+        return;
+      }
 
-      voteArea.style.display = "none";
-      doneArea.style.display = "block";
-      bottomBar.style.display = "none";
-      doneList.innerHTML = resultNames.map((name, i) => `${i + 1}. ${name}`).join("<br>");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      const resultNames = Array.from(selected).map(index => characterNames[index]);
+
+      try {
+        isSubmitting = true;
+        submitBtn.textContent = "저장 중...";
+        updateUI();
+
+        await sendVote(resultNames);
+
+        localStorage.setItem("characterVoteSubmitted", "yes");
+        localStorage.setItem("characterVoteResult", JSON.stringify(resultNames));
+
+        voteArea.style.display = "none";
+        doneArea.style.display = "block";
+        bottomBar.style.display = "none";
+        doneList.innerHTML = resultNames.map((name, i) => `${i + 1}. ${name}`).join("<br>");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (error) {
+        console.error(error);
+        showToast("저장에 실패했어요. 다시 시도해주세요.");
+        isSubmitting = false;
+        submitBtn.textContent = "투표 완료";
+        updateUI();
+      }
     });
 
     renderCards();
