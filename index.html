@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>학교 대표 캐릭터 투표</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Noto Sans KR", Arial, sans-serif;
+      background: linear-gradient(135deg, #f5f7ff 0%, #eef9f4 100%);
+      color: #222;
+    }
+
+    header {
+      padding: 34px 18px 24px;
+      text-align: center;
+      background: #ffffffcc;
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #e7e7e7;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      letter-spacing: -0.04em;
+    }
+
+    header p {
+      margin: 5px 0;
+      color: #555;
+      font-size: 15px;
+    }
+
+    .counter {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: #222;
+      color: white;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 26px 16px 120px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      background: white;
+      border: 3px solid transparent;
+      border-radius: 22px;
+      padding: 14px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.07);
+      cursor: pointer;
+      transition: 0.18s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+    }
+
+    .card.selected {
+      border-color: #2563eb;
+      box-shadow: 0 10px 28px rgba(37,99,235,0.22);
+    }
+
+    .badge {
+      position: absolute;
+      top: 13px;
+      left: 13px;
+      background: #222;
+      color: white;
+      border-radius: 999px;
+      font-size: 13px;
+      padding: 5px 10px;
+      font-weight: 700;
+      z-index: 2;
+    }
+
+    .check {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #ddd;
+      background: white;
+      font-weight: 900;
+      color: transparent;
+      z-index: 2;
+    }
+
+    .card.selected .check {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: white;
+    }
+
+    .image-wrap {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #f2f4f8;
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 13px;
+    }
+
+    .image-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      padding: 8px;
+    }
+
+    .fallback {
+      padding: 18px;
+      text-align: center;
+      color: #777;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .name {
+      text-align: center;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin: 8px 0 4px;
+    }
+
+    .hint {
+      text-align: center;
+      color: #666;
+      font-size: 13px;
+    }
+
+    .bottom-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: white;
+      border-top: 1px solid #ddd;
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+      box-shadow: 0 -6px 22px rgba(0,0,0,0.08);
+    }
+
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    #submitBtn {
+      background: #2563eb;
+      color: white;
+      min-width: 190px;
+    }
+
+    #submitBtn:disabled {
+      background: #bbb;
+      cursor: not-allowed;
+    }
+
+    #resetBtn {
+      background: #f1f1f1;
+      color: #333;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 88px;
+      transform: translateX(-50%);
+      background: #222;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 999px;
+      opacity: 0;
+      pointer-events: none;
+      transition: 0.2s;
+      z-index: 30;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 22px;
+      padding: 18px;
+      max-width: 860px;
+      width: 100%;
+      text-align: center;
+      position: relative;
+    }
+
+    .modal-content img {
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      border-radius: 16px;
+      background: #f3f3f3;
+    }
+
+    .modal-title {
+      margin-top: 12px;
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .close {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: #222;
+      color: white;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      border: none;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .done {
+      display: none;
+      max-width: 760px;
+      margin: 40px auto;
+      background: white;
+      border-radius: 24px;
+      padding: 34px 22px;
+      text-align: center;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+    }
+
+    .done h2 {
+      font-size: 30px;
+      margin: 0 0 12px;
+    }
+
+    .done-list {
+      margin-top: 20px;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1.8;
+    }
+
+    .small-guide {
+      margin: 18px auto 0;
+      max-width: 760px;
+      background: #fff7d6;
+      border: 1px solid #f5df88;
+      border-radius: 14px;
+      padding: 12px 14px;
+      color: #5c4500;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 560px) {
+      header h1 {
+        font-size: 23px;
+      }
+      .grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .card {
+        border-radius: 17px;
+        padding: 10px;
+      }
+      .name {
+        font-size: 15px;
+      }
+      .hint {
+        font-size: 12px;
+      }
+      .bottom-bar {
+        flex-direction: column;
+      }
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🏆 학교 대표 캐릭터 투표</h1>
+    <p>마음에 드는 캐릭터를 <strong>2개</strong> 선택해주세요.</p>
+    <p>그림을 한 번 더 누르면 크게 볼 수 있습니다.</p>
+    <div class="counter">선택 <span id="count">0</span> / 2</div>
+  </header>
+
+  <main>
+    <section id="voteArea">
+      <div class="grid" id="grid"></div>
+      <div class="small-guide">
+        이미지 파일은 <strong>images</strong> 폴더 안에 넣어주세요. 
+        파일명은 <strong>character01, character02 … character18</strong> 순서이며,
+        png/jpg/jpeg/webp 확장자를 자동으로 찾습니다.
+      </div>
+    </section>
+
+    <section class="done" id="doneArea">
+      <h2>투표가 완료되었습니다 🎉</h2>
+      <p>선택한 캐릭터는 다음과 같습니다.</p>
+      <div class="done-list" id="doneList"></div>
+    </section>
+  </main>
+
+  <div class="bottom-bar" id="bottomBar">
+    <button id="resetBtn" type="button">다시 선택</button>
+    <button id="submitBtn" type="button" disabled>투표 완료</button>
+  </div>
+
+  <div class="toast" id="toast">2개까지만 선택할 수 있어요.</div>
+
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <button class="close" id="closeModal" type="button">×</button>
+      <img id="modalImg" src="" alt="">
+      <div class="modal-title" id="modalTitle"></div>
+    </div>
+  </div>
+
+  <script>
+    const characterNames = ["로디,버디,로리", "바람이", "새봄이", "솔방구", "안용이", "안이", "안일이", "안카피일", "안토끼", "안톨이", "파벳이와 안일이", "깡총이", "명룡이", "소망이", "솔중이", "양일이와 사랑이", "졸뭉이", "판두리"];
+    const maxSelect = 2;
+    const extensions = ["png", "jpg", "jpeg", "webp", "PNG", "JPG", "JPEG", "WEBP"];
+    const selected = new Set();
+    let lastClickTime = 0;
+    let lastClickedIndex = null;
+
+    const grid = document.getElementById("grid");
+    const count = document.getElementById("count");
+    const submitBtn = document.getElementById("submitBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const toast = document.getElementById("toast");
+    const modal = document.getElementById("modal");
+    const modalImg = document.getElementById("modalImg");
+    const modalTitle = document.getElementById("modalTitle");
+    const closeModal = document.getElementById("closeModal");
+    const voteArea = document.getElementById("voteArea");
+    const doneArea = document.getElementById("doneArea");
+    const doneList = document.getElementById("doneList");
+    const bottomBar = document.getElementById("bottomBar");
+
+    function imagePath(index, ext) {
+      return `images/character${String(index + 1).padStart(2, "0")}.${ext}`;
+    }
+
+    function setImageWithFallback(img, index, fallbackEl) {
+      let extIndex = 0;
+      function tryNext() {
+        if (extIndex >= extensions.length) {
+          img.style.display = "none";
+          fallbackEl.style.display = "block";
+          return;
+        }
+        img.src = imagePath(index, extensions[extIndex]);
+        extIndex++;
+      }
+      img.onerror = tryNext;
+      img.onload = () => {
+        img.style.display = "block";
+        fallbackEl.style.display = "none";
+      };
+      tryNext();
+    }
+
+    function renderCards() {
+      characterNames.forEach((name, index) => {
+        const card = document.createElement("article");
+        card.className = "card";
+        card.dataset.index = index;
+
+        const badge = document.createElement("div");
+        badge.className = "badge";
+        badge.textContent = index + 1;
+
+        const check = document.createElement("div");
+        check.className = "check";
+        check.textContent = "✓";
+
+        const imageWrap = document.createElement("div");
+        imageWrap.className = "image-wrap";
+
+        const img = document.createElement("img");
+        img.alt = name;
+
+        const fallback = document.createElement("div");
+        fallback.className = "fallback";
+        fallback.style.display = "none";
+        fallback.innerHTML = `이미지 준비 중<br><strong>${name}</strong>`;
+
+        setImageWithFallback(img, index, fallback);
+
+        imageWrap.appendChild(img);
+        imageWrap.appendChild(fallback);
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "name";
+        nameEl.textContent = name;
+
+        const hint = document.createElement("div");
+        hint.className = "hint";
+        hint.textContent = "선택 / 크게 보기";
+
+        card.appendChild(badge);
+        card.appendChild(check);
+        card.appendChild(imageWrap);
+        card.appendChild(nameEl);
+        card.appendChild(hint);
+
+        card.addEventListener("click", () => handleCardClick(index, card, img, name));
+        grid.appendChild(card);
+      });
+    }
+
+    function handleCardClick(index, card, img, name) {
+      const now = Date.now();
+      const isDoubleClick = lastClickedIndex === index && now - lastClickTime < 450;
+      lastClickTime = now;
+      lastClickedIndex = index;
+
+      if (isDoubleClick && img.style.display !== "none") {
+        openModal(img.src, name);
+        return;
+      }
+
+      if (selected.has(index)) {
+        selected.delete(index);
+        card.classList.remove("selected");
+      } else {
+        if (selected.size >= maxSelect) {
+          showToast("2개까지만 선택할 수 있어요.");
+          return;
+        }
+        selected.add(index);
+        card.classList.add("selected");
+      }
+      updateUI();
+    }
+
+    function updateUI() {
+      count.textContent = selected.size;
+      submitBtn.disabled = selected.size !== maxSelect;
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1400);
+    }
+
+    function openModal(src, name) {
+      modalImg.src = src;
+      modalImg.alt = name;
+      modalTitle.textContent = name;
+      modal.classList.add("show");
+    }
+
+    function closeModalFn() {
+      modal.classList.remove("show");
+    }
+
+    closeModal.addEventListener("click", closeModalFn);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModalFn();
+    });
+
+    resetBtn.addEventListener("click", () => {
+      selected.clear();
+      document.querySelectorAll(".card.selected").forEach(card => card.classList.remove("selected"));
+      updateUI();
+    });
+
+    submitBtn.addEventListener("click", () => {
+      if (selected.size !== maxSelect) {
+        showToast("캐릭터를 2개 선택해주세요.");
+        return;
+      }
+
+      const resultNames = Array.from(selected).map(index => characterNames[index]);
+      localStorage.setItem("characterVoteResult", JSON.stringify(resultNames));
+
+      voteArea.style.display = "none";
+      doneArea.style.display = "block";
+      bottomBar.style.display = "none";
+      doneList.innerHTML = resultNames.map((name, i) => `${i + 1}. ${name}`).join("<br>");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    renderCards();
+    updateUI();
+  </script>
+</body>
+</html>
