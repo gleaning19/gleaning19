@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>캐릭터 투표 결과</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Noto Sans KR", Arial, sans-serif;
+      background: linear-gradient(135deg, #f5f7ff 0%, #eef9f4 100%);
+      color: #222;
+    }
+    header {
+      text-align: center;
+      padding: 34px 18px 22px;
+      background: #ffffffdd;
+      border-bottom: 1px solid #e7e7e7;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      letter-spacing: -0.04em;
+    }
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+    .summary {
+      background: white;
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.07);
+      margin-bottom: 18px;
+      text-align: center;
+      font-weight: 800;
+      font-size: 18px;
+    }
+    .row {
+      background: white;
+      border-radius: 18px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 5px 16px rgba(0,0,0,0.06);
+    }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+      font-weight: 900;
+    }
+    .rank { min-width: 42px; color: #2563eb; }
+    .name { flex: 1; letter-spacing: -0.04em; }
+    .count { min-width: 58px; text-align: right; }
+    .bar {
+      height: 12px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .fill {
+      height: 100%;
+      background: #2563eb;
+      border-radius: 999px;
+      width: 0%;
+      transition: 0.3s;
+    }
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 18px;
+      background: #222;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .notice {
+      color: #666;
+      text-align: center;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📊 캐릭터 투표 결과</h1>
+    <p>Supabase에 저장된 투표 결과를 불러옵니다.</p>
+    <button onclick="loadResults()">새로고침</button>
+  </header>
+
+  <main>
+    <div class="summary" id="summary">결과를 불러오는 중...</div>
+    <div id="resultList"></div>
+    <p class="notice">학생 1명이 2개를 선택하므로 총 득표수는 제출 인원 × 2입니다.</p>
+  </main>
+
+  <script>
+    const SUPABASE_REST_URL = "https://pdntxscyrgwimeslbusw.supabase.co/rest/v1/votes";
+    const SUPABASE_API_KEY = "sb_publishable_wmNX3MbEXyJSmGxJ_442ww_pnl1xquo";
+
+    const characterNames = ["로디,버디,로리", "바람이", "새봄이", "솔방구", "안용이", "안이", "안일이", "안카피일", "안토끼", "안톨이", "파벳이와 안일이", "깡총이", "명룡이", "소망이", "솔중이", "양일이와 사랑이", "졸뭉이", "판두리"];
+
+    async function loadResults() {
+      const summary = document.getElementById("summary");
+      const resultList = document.getElementById("resultList");
+      summary.textContent = "결과를 불러오는 중...";
+      resultList.innerHTML = "";
+
+      try {
+        const response = await fetch(`${SUPABASE_REST_URL}?select=selected1,selected2,created_at&order=created_at.desc`, {
+          method: "GET",
+          headers: {
+            "apikey": SUPABASE_API_KEY,
+            "Authorization": `Bearer ${SUPABASE_API_KEY}`
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "결과 불러오기 실패");
+        }
+
+        const votes = await response.json();
+        const counts = {};
+        characterNames.forEach(name => counts[name] = 0);
+
+        votes.forEach(vote => {
+          if (counts[vote.selected1] !== undefined) counts[vote.selected1]++;
+          if (counts[vote.selected2] !== undefined) counts[vote.selected2]++;
+        });
+
+        const sorted = characterNames
+          .map(name => ({ name, count: counts[name] }))
+          .sort((a, b) => b.count - a.count);
+
+        const max = Math.max(...sorted.map(item => item.count), 1);
+        summary.textContent = `총 제출 ${votes.length}명 / 총 득표 ${votes.length * 2}표`;
+
+        resultList.innerHTML = sorted.map((item, index) => {
+          const percent = Math.round((item.count / max) * 100);
+          const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}위`;
+          return `
+            <div class="row">
+              <div class="top">
+                <div class="rank">${medal}</div>
+                <div class="name">${item.name}</div>
+                <div class="count">${item.count}표</div>
+              </div>
+              <div class="bar"><div class="fill" style="width:${percent}%"></div></div>
+            </div>
+          `;
+        }).join("");
+      } catch (error) {
+        console.error(error);
+        summary.textContent = "결과를 불러오지 못했습니다. Supabase 테이블/RLS 설정을 확인해주세요.";
+      }
+    }
+
+    loadResults();
+  </script>
+</body>
+</html>

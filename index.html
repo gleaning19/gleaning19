@@ -379,9 +379,9 @@
   </div>
 
   <script>
-    // 1. Google Apps Script 웹 앱 URL을 아래 따옴표 안에 붙여 넣으세요.
-    // 예: const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
-    const GOOGLE_SCRIPT_URL = "";
+    // Supabase 연결 정보
+    const SUPABASE_REST_URL = "https://pdntxscyrgwimeslbusw.supabase.co/rest/v1/votes";
+    const SUPABASE_API_KEY = "sb_publishable_wmNX3MbEXyJSmGxJ_442ww_pnl1xquo";
 
     const characterNames = ["로디,버디,로리", "바람이", "새봄이", "솔방구", "안용이", "안이", "안일이", "안카피일", "안토끼", "안톨이", "파벳이와 안일이", "깡총이", "명룡이", "소망이", "솔중이", "양일이와 사랑이", "졸뭉이", "판두리"];
     const maxSelect = 2;
@@ -539,25 +539,25 @@
       const payload = {
         selected1: resultNames[0],
         selected2: resultNames[1],
-        selectedAll: resultNames.join(", "),
-        userAgent: navigator.userAgent,
-        pageUrl: location.href,
-        submittedAt: new Date().toISOString()
+        selected_all: resultNames.join(", "),
+        device: navigator.userAgent
       };
 
-      if (!GOOGLE_SCRIPT_URL) {
-        console.warn("GOOGLE_SCRIPT_URL이 비어 있습니다. 스프레드시트에는 저장되지 않습니다.");
-        return { ok: true, skipped: true };
-      }
-
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
+      const response = await fetch(SUPABASE_REST_URL, {
         method: "POST",
-        mode: "no-cors",
         headers: {
-          "Content-Type": "text/plain;charset=utf-8"
+          "apikey": SUPABASE_API_KEY,
+          "Authorization": `Bearer ${SUPABASE_API_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
         },
         body: JSON.stringify(payload)
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Supabase 저장 실패");
+      }
 
       return { ok: true };
     }
